@@ -1,0 +1,119 @@
+buildscript {
+    repositories {
+        flatDir {
+            dirs "${rootProject.projectDir}/gradle/plugins"
+        }
+        maven {
+            url "https://plugins.gradle.org/m2/"
+        }
+    }
+    dependencies {
+        classpath group: 'org.gradle.plugins', name: 'gradle-environments-plugin', version: '1.0'
+        classpath "net.ltgt.gradle:gradle-apt-plugin:0.5"
+    }
+}
+
+plugins {
+
+    id 'com.bmuschko.docker-java-application' version '2.6.1'
+    id 'io.ratpack.ratpack-java' version '1.1.1'
+    id 'com.github.johnrengelman.shadow' version '1.2.2'
+    id 'idea'
+}
+
+apply plugin: "net.ltgt.apt"
+
+repositories {
+    jcenter()
+    maven {
+        url 'http://oss.sonatype.org/content/repositories/snapshots'
+    }
+    maven {
+        url "https://plugins.gradle.org/m2/"
+    }
+}
+
+apply plugin: "environments"
+
+
+dependencies {
+    runtime 'org.slf4j:slf4j-simple:1.7.12'
+
+    compile ratpack.dependency("guice")
+    compile ratpack.dependency("rx")
+
+    compile 'com.google.auto.value:auto-value:1.2-SNAPSHOT'
+//    compileOnly 'com.ryanharter.auto.value:auto-value-moshi:0.2-SNAPSHOT'
+    apt 'com.ryanharter.auto.value:auto-value-moshi:0.2-SNAPSHOT'
+
+    compile 'com.squareup.moshi:moshi:1.0.0'
+
+    compile 'com.braintreepayments.gateway:braintree-java:2.53.0'
+
+    testCompile 'junit:junit:4.12'
+    testCompile 'com.google.truth:truth:0.28'
+}
+
+group 'monkeys-app'
+version '1.0'
+
+environments {
+
+    Main {
+
+        // Environments source folder. It must contain inner folders with environment names
+        // and environment specific configuration files inside of each oen
+        // Default value "./environments/"
+        sourceDir = "./src/main/environments"
+
+        // Destination folder, where all files from the 'sourceDir/[environment name]' must be copied.
+        // Default value "." -- current project root
+        destinationDir = "./src/main/resources/"
+
+        // Default environment value, which will be chosen when environment is not specified.
+        // Default value "development"
+        defaultEnvironment = "development"
+
+        // List of tasks names, dependent on resolving this environment.
+        // Default value []
+        dependentTasks = ["build", "idea" ]
+
+    }
+}
+
+project.ext.dockerUrl = 'unix:///var/run/docker.sock'
+
+docker {
+    url = project.hasProperty('dockerUrl') ?
+                project.getProperty('dockerUrl') :
+                System.env.DOCKER_HOST.replace('tcp', 'https')
+
+    // Configuration for Java application image.
+    javaApplication {
+
+        // Default value for maintainer is 
+        // System.properties['user.name'].
+        maintainer = "Nicolas Milliard <niqo01>"
+
+        // Exposed port.
+        port = 5050
+    }
+}
+
+idea {
+    project {
+        //use JDK 1.8 in idea
+        jdkName "1.8"
+        languageLevel "1.8"
+        ipr {
+            withXml { provider ->
+                def node = provider.asNode()
+                //configure git support for the project in idea
+                node.component.find { it.'@name' == 'VcsDirectoryMappings' }?.mapping[0].'@vcs' = 'Git'
+            }
+        }
+    }
+}
+
+
+mainClassName = 'com.monkey.Server'

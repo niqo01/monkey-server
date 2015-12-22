@@ -1,0 +1,11 @@
+generated
+generated_test
+
+classes
+.idea
+*.iml
+*.ipr
+*.iws
+
+.gradle
+build
